@@ -1,8 +1,10 @@
 package com.dhiraj.docpilot.Controller;
 
 import com.dhiraj.docpilot.Dto.UserDto;
+import com.dhiraj.docpilot.Dto.UserRegistrationDto;
 import com.dhiraj.docpilot.Entity.User;
 import com.dhiraj.docpilot.Repository.UserRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,9 +18,14 @@ public class UserController {
     private final UserRepository userRepository;
 
     @PostMapping("/register")
-    public UserDto registerUser(@RequestBody User user) {
+    public UserDto registerUser(@Valid @RequestBody UserRegistrationDto userRegistrationDto) {
+        User user = new User();
+        user.setUsername(userRegistrationDto.getUsername());
+        user.setEmail(userRegistrationDto.getEmail());
+        user.setPassword(userRegistrationDto.getPassword());
+
         User saved =  userRepository.save(user);
-        return new UserDto(user.getId(), user.getUsername(), user.getEmail());
+        return new UserDto(saved.getId(), saved.getUsername(), saved.getEmail());
     }
 
     @GetMapping("/{id}")
