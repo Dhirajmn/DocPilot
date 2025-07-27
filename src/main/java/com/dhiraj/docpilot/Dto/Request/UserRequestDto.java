@@ -1,4 +1,4 @@
-package com.dhiraj.docpilot.Dto;
+package com.dhiraj.docpilot.Dto.Request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -12,7 +12,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserRegistrationDto {
+public class UserRequestDto {
 
 
     @NotBlank(message = "username is required")

@@ -1,12 +1,17 @@
 package com.dhiraj.docpilot.Controller;
 
-import com.dhiraj.docpilot.Dto.UserDto;
-import com.dhiraj.docpilot.Dto.UserRegistrationDto;
+import com.dhiraj.docpilot.Dto.ApiResponse;
+import com.dhiraj.docpilot.Dto.Request.UserRequestDto;
+import com.dhiraj.docpilot.Dto.Response.UserResponseDto;
 import com.dhiraj.docpilot.Entity.User;
 import com.dhiraj.docpilot.Repository.UserRepository;
+import com.dhiraj.docpilot.Service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -15,23 +20,32 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     @PostMapping("/register")
-    public UserDto registerUser(@Valid @RequestBody UserRegistrationDto userRegistrationDto) {
-        User user = new User();
-        user.setUsername(userRegistrationDto.getUsername());
-        user.setEmail(userRegistrationDto.getEmail());
-        user.setPassword(userRegistrationDto.getPassword());
+    public ResponseEntity<ApiResponse<UserResponseDto>> registerUser(@Valid @RequestBody UserRequestDto dto) {
 
-        User saved =  userRepository.save(user);
-        return new UserDto(saved.getId(), saved.getUsername(), saved.getEmail());
+        if(userService.emailExists(dto.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+
+        User user = User.builder()
+                .username(dto.getUsername())
+                .email(dto.getEmail())
+                .password(dto.getPassword())
+                .build();
+
+        User saved =  userService.saveUser(user);
+
+        ApiResponse<UserResponseDto> response= new ApiResponse<>(true, "User registered successfully", UserResponseDto.fromEntity(saved));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
-    public UserDto getUser(@PathVariable UUID id) {
-        User user = userRepository.findById(id).orElseThrow();
-        return new UserDto(user.getId(), user.getUsername(), user.getEmail());
+    public ResponseEntity<ApiResponse<UserResponseDto>> getUser(@PathVariable UUID id) {
+        User user = userService.findById(id);
+        ApiResponse<UserResponseDto> response = new ApiResponse<>(true, "User fetched successfully", UserResponseDto.fromEntity(user));
+        return ResponseEntity.ok(response);
     }
-
 }

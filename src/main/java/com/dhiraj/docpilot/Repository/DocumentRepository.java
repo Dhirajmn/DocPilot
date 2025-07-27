@@ -12,4 +12,6 @@ import java.util.UUID;
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
     List<Document> findByOwner(User owner);
+
+    UUID id(UUID id);
 }

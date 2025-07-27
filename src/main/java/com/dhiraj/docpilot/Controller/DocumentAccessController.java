@@ -1,5 +1,7 @@
 package com.dhiraj.docpilot.Controller;
 
+import com.dhiraj.docpilot.Dto.ApiResponse;
+import com.dhiraj.docpilot.Dto.DocumentAccessResponseDto;
 import com.dhiraj.docpilot.Entity.Document;
 import com.dhiraj.docpilot.Entity.DocumentAccess;
 import com.dhiraj.docpilot.Entity.User;
@@ -7,10 +9,14 @@ import com.dhiraj.docpilot.Repository.DocumentAccessRepository;
 import com.dhiraj.docpilot.Repository.DocumentRepository;
 import com.dhiraj.docpilot.Repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/docs")
@@ -23,59 +29,72 @@ public class DocumentAccessController {
 
     private final UUID MOCK_USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
-    //share doc with user
+    // Share document with user
     @PostMapping("/share")
-    public String shareDocument(
+    public ResponseEntity<ApiResponse<Void>> shareDocument(
             @RequestParam UUID documentId,
             @RequestParam String targetMail,
             @RequestParam DocumentAccess.AccessType accessType
-            ) {
-        User owner = userRepository.findById(MOCK_USER_ID).orElseThrow();
-        Document doc = documentRepository.findById(documentId).orElseThrow();
+    ) {
+        User owner = userRepository.findById(MOCK_USER_ID)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
 
         if (!doc.getOwner().equals(owner)) {
-            return "You don't own this document to share";
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't own this document");
         }
 
-        User targetUser = userRepository.findByEmail(targetMail).orElseThrow(() -> new RuntimeException("User not found"));
+        User targetUser = userRepository.findByEmail(targetMail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user not found"));
 
         if (documentAccessRepository.findByUserAndDocument(targetUser, doc).isPresent()) {
-            return "Already shared with this user";
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Document already shared with this user");
         }
 
-        DocumentAccess access = DocumentAccess
-                .builder()
+        DocumentAccess access = DocumentAccess.builder()
                 .document(doc)
                 .user(targetUser)
-                .accessType(DocumentAccess.AccessType.READ)
+                .accessType(accessType)
                 .build();
 
         documentAccessRepository.save(access);
-        return "Document shared with" + targetMail + " as " + accessType;
+
+        return ResponseEntity.ok(new ApiResponse<>("Document shared with " + targetMail + " as " + accessType));
     }
 
-    //list of users document is shared with
+    // List of users document is shared with
     @GetMapping("/shared-users/{docId}")
-    public List<DocumentAccess> getSharedUser(@PathVariable UUID documentId) {
-        Document doc = documentRepository.findById(documentId).orElseThrow();
-        return documentAccessRepository.findByDocument(doc);
+    public ResponseEntity<ApiResponse<List<DocumentAccessResponseDto>>> getSharedUsers(@PathVariable("docId") UUID documentId) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
+
+        List<DocumentAccessResponseDto> sharedUsers = documentAccessRepository.findByDocument(doc)
+                .stream()
+                .map(DocumentAccessResponseDto::fromEntity)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(new ApiResponse<>("Shared users fetched successfully", sharedUsers));
     }
 
-    //Revoke access
+    // Revoke access
     @DeleteMapping("/revoke")
-    public String revokeAccess(
+    public ResponseEntity<ApiResponse<Void>> revokeAccess(
             @RequestParam UUID documentId,
             @RequestParam String targetMail
     ) {
-        Document doc = documentRepository.findById(documentId).orElseThrow();
-        User targetUser = userRepository.findByEmail(targetMail).orElseThrow();
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
 
-        DocumentAccess access = documentAccessRepository.findByUserAndDocument(targetUser, doc).orElseThrow();
+        User targetUser = userRepository.findByEmail(targetMail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user not found"));
+
+        DocumentAccess access = documentAccessRepository.findByUserAndDocument(targetUser, doc)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Access not found for this user"));
 
         documentAccessRepository.delete(access);
-        return "Access revoked for user: " + targetMail;
+
+        return ResponseEntity.ok(new ApiResponse<>("Access revoked for user: " + targetMail));
     }
-
-
-
 }
