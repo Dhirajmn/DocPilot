@@ -8,6 +8,9 @@ import com.dhiraj.docpilot.Entity.User;
 import com.dhiraj.docpilot.Repository.DocumentAccessRepository;
 import com.dhiraj.docpilot.Repository.DocumentRepository;
 import com.dhiraj.docpilot.Repository.UserRepository;
+import com.dhiraj.docpilot.Service.DocumentAccessService;
+import com.dhiraj.docpilot.Service.DocumentService;
+import com.dhiraj.docpilot.Service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -26,6 +30,9 @@ public class DocumentAccessController {
     private final DocumentRepository documentRepository;
     private final DocumentAccessRepository documentAccessRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
+    private final DocumentService documentService;
+    private final DocumentAccessService documentAccessService;
 
     private final UUID MOCK_USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
@@ -36,46 +43,32 @@ public class DocumentAccessController {
             @RequestParam String targetMail,
             @RequestParam DocumentAccess.AccessType accessType
     ) {
-        User owner = userRepository.findById(MOCK_USER_ID)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        User owner = userService.findById(MOCK_USER_ID);
 
-        Document doc = documentRepository.findById(documentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
+        Document doc = documentService.getDocumentById(documentId);
 
         if (!doc.getOwner().equals(owner)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't own this document");
         }
 
-        User targetUser = userRepository.findByEmail(targetMail)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user not found"));
+        User targetUser = userService.findByEmail(targetMail);
 
-        if (documentAccessRepository.findByUserAndDocument(targetUser, doc).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Document already shared with this user");
-        }
+        documentAccessService.shareDocument(targetUser, doc, accessType);
 
-        DocumentAccess access = DocumentAccess.builder()
-                .document(doc)
-                .user(targetUser)
-                .accessType(accessType)
-                .build();
-
-        documentAccessRepository.save(access);
-
-        return ResponseEntity.ok(new ApiResponse<>("Document shared with " + targetMail + " as " + accessType));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Document shared with " + targetMail + " as " + accessType));
     }
 
     // List of users document is shared with
     @GetMapping("/shared-users/{docId}")
     public ResponseEntity<ApiResponse<List<DocumentAccessResponseDto>>> getSharedUsers(@PathVariable("docId") UUID documentId) {
-        Document doc = documentRepository.findById(documentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
+        Document doc = documentService.getDocumentById(documentId);
 
-        List<DocumentAccessResponseDto> sharedUsers = documentAccessRepository.findByDocument(doc)
+        List<DocumentAccessResponseDto> sharedUsers = documentAccessService.findByDocument(doc)
                 .stream()
                 .map(DocumentAccessResponseDto::fromEntity)
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(new ApiResponse<>("Shared users fetched successfully", sharedUsers));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Shared users fetched successfully", sharedUsers));
     }
 
     // Revoke access
@@ -84,17 +77,14 @@ public class DocumentAccessController {
             @RequestParam UUID documentId,
             @RequestParam String targetMail
     ) {
-        Document doc = documentRepository.findById(documentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
+        Document doc = documentService.getDocumentById(documentId);
 
-        User targetUser = userRepository.findByEmail(targetMail)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user not found"));
+        User targetUser = userService.findByEmail(targetMail);
 
-        DocumentAccess access = documentAccessRepository.findByUserAndDocument(targetUser, doc)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Access not found for this user"));
+        DocumentAccess access = documentAccessService.findByUserAndDocument(targetUser, doc);
 
-        documentAccessRepository.delete(access);
+        documentAccessService.revokeAccess(access);
 
-        return ResponseEntity.ok(new ApiResponse<>("Access revoked for user: " + targetMail));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Access revoked for user: " + targetMail));
     }
 }
