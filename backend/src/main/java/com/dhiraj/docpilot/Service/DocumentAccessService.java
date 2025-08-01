@@ -3,7 +3,6 @@ package com.dhiraj.docpilot.Service;
 import com.dhiraj.docpilot.Entity.Document;
 import com.dhiraj.docpilot.Entity.DocumentAccess;
 import com.dhiraj.docpilot.Entity.User;
-import com.dhiraj.docpilot.Exception.ResourceNotFoundException;
 import com.dhiraj.docpilot.Repository.DocumentAccessRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

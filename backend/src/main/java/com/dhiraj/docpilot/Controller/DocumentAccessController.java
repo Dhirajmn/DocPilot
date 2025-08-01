@@ -5,9 +5,6 @@ import com.dhiraj.docpilot.Dto.DocumentAccessResponseDto;
 import com.dhiraj.docpilot.Entity.Document;
 import com.dhiraj.docpilot.Entity.DocumentAccess;
 import com.dhiraj.docpilot.Entity.User;
-import com.dhiraj.docpilot.Repository.DocumentAccessRepository;
-import com.dhiraj.docpilot.Repository.DocumentRepository;
-import com.dhiraj.docpilot.Repository.UserRepository;
 import com.dhiraj.docpilot.Service.DocumentAccessService;
 import com.dhiraj.docpilot.Service.DocumentService;
 import com.dhiraj.docpilot.Service.UserService;
@@ -27,9 +24,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DocumentAccessController {
 
-    private final DocumentRepository documentRepository;
-    private final DocumentAccessRepository documentAccessRepository;
-    private final UserRepository userRepository;
     private final UserService userService;
     private final DocumentService documentService;
     private final DocumentAccessService documentAccessService;
