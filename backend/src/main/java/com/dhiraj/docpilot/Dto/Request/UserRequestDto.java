@@ -14,7 +14,6 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserRequestDto {
 
-
     @NotBlank(message = "username is required")
     private String username;
 
